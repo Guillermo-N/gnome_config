@@ -1,0 +1,121 @@
+---
+- name: Fedora gnome configuration
+  hosts: localhost
+  become: true
+  become_user: root
+  gather_facts: False
+  vars:
+    packages:
+      - vim
+      - qbittorrent
+      - dnf-plugins-core
+      - evolution
+      - mpv
+      - calibre
+      - keepassxc
+      - pass.noarch
+      - vagrant
+      - anaconda-core
+      - git
+
+
+  tasks:
+    - name: Intalling packages
+      ansible.builtin.dnf:
+        name: "{{ packages }}"
+        state: present
+
+    - name: Checking for existance of Brave repo
+      ansible.builtin.stat:
+        path: '/etc/yum.repos.d/brave-browser.repo'
+      register: brave_repo_result
+
+
+    - name: Adding Brave
+      block:
+        - name: Adding Brave repo
+          ansible.builtin.command: dnf config-manager --add-repo https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo
+
+        - name: Adding Brave gpg-key
+          ansible.builtin.command: rpm --import https://brave-browser-rpm-release.s3.brave.com/brave-core.asc
+
+      when: not brave_repo_result.stat.exists
+      notify:
+        - Install Brave-browser
+
+
+    - name: Checking for existance of VSCodium repo
+      ansible.builtin.stat:
+        path: '/etc/yum.repos.d/vscodium.repo'
+      register: codium_repo_result
+
+    - name: Adding VSCodium
+      block:
+        - name: Adding GPG key of the repository
+          ansible.builtin.command: rpmkeys --import https://gitlab.com/paulcarroty/vscodium-deb-rpm-repo/-/raw/master/pub.gpg
+        - name: Adding repository
+          ansible.builtin.shell: printf "[gitlab.com_paulcarroty_vscodium_repo]\nname=download.vscodium.com\nbaseurl=https://download.vscodium.com/rpms/\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=1\ngpgkey=https://gitlab.com/paulcarroty/vscodium-deb-rpm-repo/-/raw/master/pub.gpg\nmetadata_expire=1h" | tee -a /etc/yum.repos.d/vscodium.repo
+
+      when: not codium_repo_result.stat.exists
+      notify:
+        - Install VS-Codium
+
+
+    - name: Checking for existance of  Discord.desktop
+      ansible.builtin.stat:
+        path: '/usr/share/applications/discord.desktop'
+      register: discord_desktop_result
+
+
+    - name: Installing Discord
+      block:
+        - name: Downloading Discord.tar
+          ansible.builtin.get_url:
+            url: https://discord.com/api/download?platform=linux&format=tar.gz
+            dest: /tmp/discord.tar.gz
+
+        - name: Decompressing Discrod
+          ansible.builtin.unarchive:
+            src: /tmp/discord.tar.gz
+            dest: /opt
+            remote_src: True
+
+        - name: Linking to /bin/Discord
+          ansible.builtin.file:
+            src: /opt/Discord/Discord
+            dest: /usr/bin/Discord
+            state: link
+            force: True
+
+        - name: Copy file with owner and permissions
+          ansible.builtin.copy:
+            src: /opt/Discord/discord.desktop
+            dest: /usr/share/applications
+
+        - name: Replace a localhost entry with our own
+          ansible.builtin.lineinfile:
+            path: /usr/share/applications/discord.desktop
+            regexp: '^Exec=.*'
+            line: Exec=/usr/bin/Discord
+            
+        - name: Replace a localhost entry with our own
+          ansible.builtin.lineinfile:
+            path: /usr/share/applications/discord.desktop
+            regexp: '^Icon=.*'
+            line: Icon=/opt/Discord/discord.png
+        
+      when: not discord_desktop_result.stat.exists
+            
+            
+
+
+  handlers:
+    - name: Install Brave-browser
+      ansible.builtin.dnf:
+        name: brave-browser
+        state: present
+
+    - name: Install VS-Codium
+      ansible.builtin.dnf:
+        name: codium
+        state: present
