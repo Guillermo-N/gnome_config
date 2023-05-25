@@ -17,7 +17,8 @@
       - vagrant
       - anaconda-core
       - git
-
+      - golang
+      - make
 
   tasks:
     - name: Intalling packages
@@ -106,9 +107,55 @@
         
       when: not discord_desktop_result.stat.exists
             
-            
+
+    # Browserpass - native messaging host
+    - name: Checking for existance of Browserpass
+      ansible.builtin.stat:
+        path: '/usr/lib/browserpass'
+      register: browserpass_desktop_result
+
+    - name: Installing Browserpass - native messaging host
+      block:
+
+        - name: Cloning git repo.
+          git:
+            repo: https://github.com/browserpass/browserpass-native.git
+            dest: /tmp/browserpass-native
+            version: 3.1.0
+            clone: yes
+            update: yes
+
+        - name: Make
+          command: make
+          args:
+            chdir: /tmp/browserpass-native
+        
+        - name: Make configure
+          command: make configure
+          args:
+            chdir: /tmp/browserpass-native
+
+        - name: Make install
+          command: make install
+          args:
+            chdir: /tmp/browserpass-native
+
+        - name: Browser specific configuration (Brave)
+          command: make hosts-brave
+          args:
+            chdir: /usr/lib/browserpass
+
+        - name: Browser extension (Brave)
+          command: make policies-brave
+          args:
+            chdir: /usr/lib/browserpass
+
+      when: not browserpass_desktop_result.stat.exists
+      notify:
+        - Remove browserpass repo
 
 
+  # Handelabros
   handlers:
     - name: Install Brave-browser
       ansible.builtin.dnf:
@@ -119,3 +166,9 @@
       ansible.builtin.dnf:
         name: codium
         state: present
+
+    - name: Remove browserpass repo
+      ansible.builtin.file:
+        path: /tmp/browserpass-native
+        state: absent
+
