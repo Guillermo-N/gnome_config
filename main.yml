@@ -19,6 +19,15 @@
       - git
       - golang
       - make
+      - texlive-scheme-basic
+      - texstudio
+
+    latex_pkgs:
+      - 'tex(scalerel.sty)'
+      - 'tex(bbding.sty)'
+      - 'tex(fontawesome.sty)'
+
+
 
   tasks:
     - name: Intalling packages
@@ -26,6 +35,8 @@
         name: "{{ packages }}"
         state: present
 
+
+    ###### Brave-browser ######
     - name: Checking for existance of Brave repo
       ansible.builtin.stat:
         path: '/etc/yum.repos.d/brave-browser.repo'
@@ -45,6 +56,8 @@
         - Install Brave-browser
 
 
+
+    ###### VS-Codium ######
     - name: Checking for existance of VSCodium repo
       ansible.builtin.stat:
         path: '/etc/yum.repos.d/vscodium.repo'
@@ -62,6 +75,8 @@
         - Install VS-Codium
 
 
+
+    ###### Discord ######
     - name: Checking for existance of  Discord.desktop
       ansible.builtin.stat:
         path: '/usr/share/applications/discord.desktop'
@@ -108,7 +123,7 @@
       when: not discord_desktop_result.stat.exists
             
 
-    # Browserpass - native messaging host
+    ###### Browserpass - native messaging host ######
     - name: Checking for existance of Browserpass
       ansible.builtin.stat:
         path: '/usr/lib/browserpass'
@@ -154,8 +169,54 @@
       notify:
         - Remove browserpass repo
 
+    ###### Codelite ######
+    - name: Checking for existance of Codelite
+      ansible.builtin.stat:
+        path: '/usr/share/applications/codelite.desktop'
+      register: codelite_desktop_result
 
-  # Handelabros
+    - name: Installing Codelite
+      block:
+
+        - name: Importing codelite keys
+          command: rpm --import https://repos.codelite.org/CodeLite.asc
+
+        - name: Downloading RPM
+          ansible.builtin.get_url:
+            url: https://repos.codelite.org/rpms-17.0/fedora/37/codelite-17.0-1.fc37.x86_64.rpm
+            dest: /tmp/codelite.rpm
+
+        - name: Local RPM install
+          ansible.builtin.dnf: 
+            name: /tmp/codelite.rpm
+            state: present
+
+      when: not codelite_desktop_result.stat.exists
+
+
+    ###### Netbeans ######
+    - name: Checking for existance of Netbeans
+      ansible.builtin.stat:
+        path: '/usr/share/applications/apache-netbeans-ide-17.desktop'
+      register: netbeans_desktop_result
+
+    - name: Installing Netbeans
+      block:
+
+        - name: Downloading RPM
+          ansible.builtin.get_url:
+            url: https://dlcdn.apache.org/netbeans/netbeans-installers/17/apache-netbeans-17-0.noarch.rpm
+            dest: /tmp/apache.rpm
+
+        - name: Local RPM install
+          ansible.builtin.dnf: 
+            name: /tmp/apache.rpm
+            state: present
+
+      when: not netbeans_desktop_result.stat.exists
+      
+
+  ###### Handelabros ######
   handlers:
     - name: Install Brave-browser
       ansible.builtin.dnf:
