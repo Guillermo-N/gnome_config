@@ -19,3 +19,8 @@ $ ansible-playbook -K main.yml
 * Browserpass - native messaging host
 * Codelite
 * Netbeans
+
+
+### To-do
+
+* Zotero
